@@ -1,0 +1,30 @@
+from itertools import product
+import numpy as np
+
+SEEDS = [ 500, 1024, 10000 ]
+N_SITES = [ len(np.load(f"res/sites/a_sites_seed_{seed}.npy")) for seed in SEEDS ]
+SITES = [ range(n) for n in N_SITES ]
+
+SUFACE_ENERGIES = [-334.64616134973943, -335.4597061901166, -334.80529080297185]
+
+input_dict = dict()
+for i_seed,seed in enumerate(SEEDS):
+    for site in SITES[i_seed]:
+        input_dict[ f"{seed}_{site}"] = [seed, site, SUFACE_ENERGIES[i_seed]]
+
+SAMPLES =  input_dict.keys()
+
+rule all:
+    input: expand("results/{sample}/energy.txt", sample=SAMPLES)
+
+rule drop_h2o:
+    input:
+        surface_file = lambda wc : f"res/surfaces/seed_{input_dict[wc.sample][0]}_1.xyz",
+        site_file = lambda wc: f"res/sites/a_sites_seed_{input_dict[wc.sample][0]}.npy",
+    params:
+        site_idx = lambda wc: input_dict[wc.sample][1],
+        surface_energy = lambda wc : input_dict[wc.sample][2]
+    output:
+        results_file = "results/{sample}/energy.txt"
+    shell:
+        "python workflow/scripts/drop_h2o.py {input.surface_file} {input.site_file} {output.results_file} {params.site_idx} {params.surface_energy}"
