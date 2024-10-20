@@ -9,7 +9,6 @@ cluster-generic-submit-cmd:
     --job-name=smk-{rule}-{wildcards}
     --output=logs/{rule}/{rule}-{wildcards}-%j.out
     --error=logs/{rule}/{rule}-{wildcards}-%j.err
-    --exclude=iffcluster0706,iffcluster0709
     --parsable
 cluster-generic-cancel-cmd: scancel
 default-resources:
