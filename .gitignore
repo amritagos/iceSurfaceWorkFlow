@@ -164,5 +164,5 @@ cython_debug/
 # Snakemake
 
 results/
-.snakemake/metadata
 logs/
+.snakemake/

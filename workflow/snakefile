@@ -1,11 +1,11 @@
 from itertools import product
 import numpy as np
 
-SEEDS = [ 500, 1024, 10000 ]
+SEEDS = [ 500, 1024, 10000, 12345, 12599 ]
 N_SITES_A = [ len(np.load(f"res/sites/a_sites_seed_{seed}.npy")) for seed in SEEDS ]
 SITES_A = [ range(n) for n in N_SITES_A ]
 
-SUFACE_ENERGIES = [-334.64616134973943, -335.4597061901166, -334.80529080297185]
+SUFACE_ENERGIES = [-334.64616134973943, -335.4597061901166, -334.80529080297185, -333.66757194691536, -331.84587253908325]
 
 input_dict_a_sites = dict()
 for i_seed,seed in enumerate(SEEDS):
@@ -26,8 +26,9 @@ SAMPLES_B =  input_dict_b_sites.keys()
 
 rule all:
     input: 
-        expand("results/a_sites/{sample_a}/energy.txt", sample_a=SAMPLES_A),
-        expand("results/b_sites/{sample_b}/energy.txt", sample_b=SAMPLES_B)
+        expand("results/a_sites/{sample_a}/energy.json", sample_a=SAMPLES_A),
+        expand("results/b_sites/{sample_b}/energy.json", sample_b=SAMPLES_B),
+        "results/aggregated.csv"
 
 rule drop_h2o_a:
     input:
@@ -37,7 +38,7 @@ rule drop_h2o_a:
         site_idx = lambda wc: input_dict_a_sites[wc.sample_a][1],
         surface_energy = lambda wc : input_dict_a_sites[wc.sample_a][2]
     output:
-        results_file = "results/a_sites/{sample_a}/energy.txt"
+        results_file = "results/a_sites/{sample_a}/energy.json"
     shell:
         "python workflow/scripts/drop_h2o.py {input.surface_file} {input.site_file} {output.results_file} {params.site_idx} {params.surface_energy}"
 
@@ -49,6 +50,15 @@ rule drop_h2o_b:
         site_idx = lambda wc: input_dict_b_sites[wc.sample_b][1],
         surface_energy = lambda wc : input_dict_b_sites[wc.sample_b][2]
     output:
-        results_file = "results/b_sites/{sample_b}/energy.txt"
+        results_file = "results/b_sites/{sample_b}/energy.json"
     shell:
         "python workflow/scripts/drop_h2o.py {input.surface_file} {input.site_file} {output.results_file} {params.site_idx} {params.surface_energy}"
+
+rule aggregate:
+    input:
+        results_a = expand("results/a_sites/{sample}/energy.json", sample=SAMPLES_A),
+        results_b = expand("results/b_sites/{sample}/energy.json", sample=SAMPLES_B)
+    output:
+        "results/aggregated.csv"
+    shell:
+        "python workflow/scripts/aggregate.py --results_a {input.results_a} --results_b {input.results_b} --output {output}"

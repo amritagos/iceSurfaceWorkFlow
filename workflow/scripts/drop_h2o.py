@@ -3,6 +3,7 @@ import numpy as np
 from ase.io import read
 from ase.build import molecule
 import sys
+import json
 
 sys.path.insert(1, "/hpctheochem/amrita/scmecpp/")
 from ase_interface import SCME_PS
@@ -68,13 +69,18 @@ def main(
     dyn = BFGS(system)
     dyn.run(fmax=0.01)
 
+    # energy = 0
     energy = system.get_potential_energy()
 
     # TODO: write results file as json or something easily parseable
     with open(results_file, "w") as f:
-        f.write(f"energy = {energy}\n")
-        f.write(f"surface energy = {surface_energy}\n")
-    pass
+        f.write(
+            json.dumps(dict(
+                energy = energy,
+                surface_energy = surface_energy,
+                site_index = site_idx), indent=4
+            )
+        )
 
 
 if __name__ == "__main__":
