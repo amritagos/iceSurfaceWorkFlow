@@ -2,29 +2,53 @@ from itertools import product
 import numpy as np
 
 SEEDS = [ 500, 1024, 10000 ]
-N_SITES = [ len(np.load(f"res/sites/a_sites_seed_{seed}.npy")) for seed in SEEDS ]
-SITES = [ range(n) for n in N_SITES ]
+N_SITES_A = [ len(np.load(f"res/sites/a_sites_seed_{seed}.npy")) for seed in SEEDS ]
+SITES_A = [ range(n) for n in N_SITES_A ]
 
 SUFACE_ENERGIES = [-334.64616134973943, -335.4597061901166, -334.80529080297185]
 
-input_dict = dict()
+input_dict_a_sites = dict()
 for i_seed,seed in enumerate(SEEDS):
-    for site in SITES[i_seed]:
-        input_dict[ f"{seed}_{site}"] = [seed, site, SUFACE_ENERGIES[i_seed]]
+    for site in SITES_A[i_seed]:
+        input_dict_a_sites[ f"{seed}_{site}"] = [seed, site, SUFACE_ENERGIES[i_seed]]
 
-SAMPLES =  input_dict.keys()
+SAMPLES_A =  input_dict_a_sites.keys()
+
+# B sites 
+N_SITES_B = [ len(np.load(f"res/sites/b_sites_seed_{seed}.npy")) for seed in SEEDS ]
+SITES_B = [ range(n) for n in N_SITES_B ]
+input_dict_b_sites = dict()
+for i_seed,seed in enumerate(SEEDS):
+    for site in SITES_B[i_seed]:
+        input_dict_b_sites[ f"{seed}_{site}"] = [seed, site, SUFACE_ENERGIES[i_seed]]
+
+SAMPLES_B =  input_dict_b_sites.keys()
 
 rule all:
-    input: expand("results/{sample}/energy.txt", sample=SAMPLES)
+    input: 
+        expand("results/a_sites/{sample_a}/energy.txt", sample_a=SAMPLES_A),
+        expand("results/b_sites/{sample_b}/energy.txt", sample_b=SAMPLES_B)
 
-rule drop_h2o:
+rule drop_h2o_a:
     input:
-        surface_file = lambda wc : f"res/surfaces/seed_{input_dict[wc.sample][0]}_1.xyz",
-        site_file = lambda wc: f"res/sites/a_sites_seed_{input_dict[wc.sample][0]}.npy",
+        surface_file = lambda wc : f"res/surfaces/seed_{input_dict_a_sites[wc.sample_a][0]}_1.xyz",
+        site_file = lambda wc: f"res/sites/a_sites_seed_{input_dict_a_sites[wc.sample_a][0]}.npy",
     params:
-        site_idx = lambda wc: input_dict[wc.sample][1],
-        surface_energy = lambda wc : input_dict[wc.sample][2]
+        site_idx = lambda wc: input_dict_a_sites[wc.sample_a][1],
+        surface_energy = lambda wc : input_dict_a_sites[wc.sample_a][2]
     output:
-        results_file = "results/{sample}/energy.txt"
+        results_file = "results/a_sites/{sample_a}/energy.txt"
+    shell:
+        "python workflow/scripts/drop_h2o.py {input.surface_file} {input.site_file} {output.results_file} {params.site_idx} {params.surface_energy}"
+
+rule drop_h2o_b:
+    input:
+        surface_file = lambda wc : f"res/surfaces/seed_{input_dict_b_sites[wc.sample_b][0]}_1.xyz",
+        site_file = lambda wc: f"res/sites/b_sites_seed_{input_dict_b_sites[wc.sample_b][0]}.npy",
+    params:
+        site_idx = lambda wc: input_dict_b_sites[wc.sample_b][1],
+        surface_energy = lambda wc : input_dict_b_sites[wc.sample_b][2]
+    output:
+        results_file = "results/b_sites/{sample_b}/energy.txt"
     shell:
         "python workflow/scripts/drop_h2o.py {input.surface_file} {input.site_file} {output.results_file} {params.site_idx} {params.surface_energy}"
