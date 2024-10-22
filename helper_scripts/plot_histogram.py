@@ -8,13 +8,25 @@ def main(
     input_csv_path: Path,
     output_img_path: Path,
 ):  
+    # Exclusion list 
+    baddies = [[1024, 5], [500, 4], [12599, 4], [10000, 5], [1024, 6], [12599, 1], [10000, 2], [500, 9], [500, 6], [12599, 3], [500, 7], [12345, 5], [12599, 9], [10000, 7], [12345, 9], [10000, 11], [500, 9], [12599, 10], [10000, 8], [12345, 10], [10000, 12], [500, 6], [12345, 3], [12599, 7], [500, 10], [10000, 5], [12599, 11], [1024, 3], [500, 3], [1024, 7], [1024, 4], [10000, 10], [1024, 8]]
     # Input values
     cohesive_energy = 0.622 #  in eV 
     factor = -1.0 # to get positive values 
-    n_bins = 20
+    n_bins = 75
 
     # Obtain the data
     df = pd.read_csv(input_csv_path)
+    drop_indices = []
+
+    for index, row in df.iterrows():
+        seed = row["seed"]
+        site_idx = row["site"]
+        if [seed,site_idx] in baddies:
+            drop_indices.append(index)
+    
+    df.drop(drop_indices)
+
     df_a_sites = df[df['site_type'] == 'A']
     df_b_sites = df[df['site_type'] == 'B']
     # All relative energies in eV
@@ -65,13 +77,15 @@ def main(
     ax1.set_ylabel(
         r"Frequency", labelpad=1
     )  # we already handled the x-label with ax1
-    ax1.hist(energy_a_sites, bins=n_bins, ls='dashed', lw=3, fc=(0, 0, 1, 0.5)) # blue, A sites
-    ax1.hist(energy_b_sites, bins=n_bins, ls='dotted', lw=3, fc=(1, 0, 0, 0.5)) # red, B sites 
+    ax1.hist(energy_a_sites, bins=n_bins, ls='dashed', lw=3, fc=(0, 0, 1, 0.5), label="A sites") # blue, A sites
+    ax1.hist(energy_b_sites, bins=n_bins, ls='dotted', lw=3, fc=(1, 0, 0, 0.5), label="B sites") # red, B sites 
 
-    # # Vertical line through cohesive energy
-    # ax1.vlines(
-    #     x=cohesive_energy, ymin=0, ymax=11, colors="grey", linestyles="--", linewidth=1, alpha=0.8, zorder=0
-    # )
+    # ax1.set_xlim(0,1.1)
+
+    # Vertical line through cohesive energy
+    ax1.axvline(x=cohesive_energy, color="black", linestyle="--", linewidth=1, alpha=0.8, zorder=0)
+
+    ax1.legend()
 
     # Save the image
     fig.savefig(output_img_path, dpi=300)
