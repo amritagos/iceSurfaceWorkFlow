@@ -1,0 +1,31 @@
+from itertools import product
+import numpy as np
+
+N_SURFACES = 5
+SEEDS = np.random.randint(low=1, high=int(1e6), size=N_SURFACES)
+DENSITY = 0.98472
+REP = [2, 2, 2]
+
+rule all:
+    input: 
+        expand("results/surface_seed_{seed}.xyz", seed=SEEDS),
+        expand("results/genice/surface_seed_{seed}.xyz", seed=SEEDS),
+
+
+rule genice:
+    params:
+        seed_val = lambda wc: wc.seed,
+        density = DENSITY,
+        rep = REP
+    output:
+        results_file = "results/genice/surface_seed_{seed}.xyz"
+    shell:
+        "genice2 1h --dens {params.density} --format exyz --water tip3p -s {params.seed_val} --rep {params.rep[0]} {params.rep[1]} {params.rep[2]} > {output.results_file}"
+
+rule postprocess:
+    input: 
+        rules.genice.output
+    output:
+        results_file = "results/surface_seed_{seed}.xyz"
+    shell:
+        "python workflow/scripts/post_process.py {input} {output.results_file}"
