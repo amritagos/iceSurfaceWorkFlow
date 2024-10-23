@@ -24,9 +24,10 @@ tmux attach -t my_session
 ```
 
 Regarding Snakemake: always do a dry run first, and use the `config.yml` inside `elja_profile`:
+Go into the correct directory to run, for instance 1-dropH2O
 
 ```bash
-snakemake -n --profile ./elja_profile/
+snakemake -n --profile ../elja_profile/
 ```
 
 **Caution:** Never run Snakemake on Elja without using the `config.yml` or else you will submit jobs to the login node.
@@ -34,5 +35,5 @@ snakemake -n --profile ./elja_profile/
 To actually run the simulations, submit it like so: 
 
 ```bash
-snakemake --profile ./elja_profile/
+snakemake --profile ../elja_profile/
 ```

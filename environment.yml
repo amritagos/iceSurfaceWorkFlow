@@ -12,3 +12,4 @@ dependencies:
   - snakemake
   - pip:
     - snakemake-executor-plugin-cluster-generic
+    - genice2
