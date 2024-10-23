@@ -1,2 +1,2 @@
 #!/bin/sh
-find ./scripts -regex '.*py' -exec black {} \;
+find . -regex '.*py' -exec black {} \;
