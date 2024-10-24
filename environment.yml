@@ -10,6 +10,7 @@ dependencies:
   - ipython>=8.26.0
   - pandas>=2.2.2
   - snakemake
+  - pybind11
   - pip:
     - snakemake-executor-plugin-cluster-generic
     - genice2
