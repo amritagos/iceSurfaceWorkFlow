@@ -4,7 +4,7 @@ from ase.io import read, write
 import sys
 import json
 
-sys.path.insert(1, "/hpctheochem/amrita/scmecpp/")
+sys.path.insert(1, "/home/amritagos/Git/Gitlab/scmecpp/")
 from ase_interface import SCME_PS
 
 
@@ -48,7 +48,7 @@ def main(
     dipole_moment_magnitude = np.linalg.norm(system._calc.results["dipole"])
 
     # Write out the final XYZ file
-    write(output_xyz, system, format="xyz")
+    write(output_xyz, system)
 
     # Write results file as json or something easily parseable
     with open(results_file, "w") as f:
@@ -57,7 +57,7 @@ def main(
                 dict(
                     seed=seed,
                     cohesive_energy=cohesive_energy,
-                    dipole_moment_vector=system._calc.results["dipole"],
+                    # dipole_moment_vector=system._calc.results["dipole"].tolist(),
                     dipole_moment=dipole_moment_magnitude,
                 ),
                 indent=4,
@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
     parser.add_argument("input_xyz", type=Path)
     parser.add_argument("seed", type=int)
-    parser.add_argument("output_xyz", type=int)
+    parser.add_argument("output_xyz", type=Path)
     parser.add_argument("results_file", type=Path)
 
     args = parser.parse_args()
