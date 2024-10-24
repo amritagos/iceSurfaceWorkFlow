@@ -38,7 +38,7 @@ def main(
     from ase.optimize import BFGS
 
     dyn = BFGS(system)  # Don't write out a trajectory
-    dyn.run(fmax=0.01)
+    dyn.run(fmax=0.01, steps=0)
 
     energy = system.get_potential_energy()
     n_water_molecules = len(system) / 3

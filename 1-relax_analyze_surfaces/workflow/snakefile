@@ -3,8 +3,13 @@ import numpy as np
 from pathlib import Path
 import re
 
-# Paths (if relative) should be relative to the top-level directory (in this case, 1-relax_analyze_surfaces)
+# Paths to system XYZ files (if relative) should be relative to the top-level directory (in this case, 1-relax_analyze_surfaces)
 xyz_directory = '/home/amritagos/Git/Github/iceSurfaceWorkFlow/0-create_surfaces/results'
+# Put in the number of bilayers (required to figure out which parts of the system to freeze, and to isolate the top layer of the top bilayer)
+N_BILAYERS = 6
+VACUUM_DEPTH = 20 # Amount of vaccuum to add 
+N_LAYERS_FREEZE = 2 # Number of bilayers from the bottom to freeze
+# Frozen atoms will have tag 2 and moving atoms will have a tag of 0 (other moving atoms) or 1 (topmost top layer)
 
 filepaths = list(Path(xyz_directory).glob('*.xyz'))
 # Extract seeds from the list of file paths
@@ -14,7 +19,8 @@ N_SURFACES = len(SEEDS)
 rule all:
     input: 
         expand("results/bulk_relax/{seed}/system_seed_{seed}.xyz", seed=SEEDS),
-        "results/bulk_systems_aggregated.csv"
+        "results/bulk_systems_aggregated.csv",
+        # expand("results/surface_relax/{seed}/surface_seed_{seed}.xyz", seed=SEEDS)
 
 
 rule bulk_relax:
@@ -35,3 +41,17 @@ rule aggregate_bulk:
         "results/bulk_systems_aggregated.csv"
     shell:
         "python workflow/scripts/aggregate_bulk.py --results {input} --output {output}"
+
+rule surface_relax:
+    input: 
+        initial_xyz = expand("results/bulk_relax/{seed}/system_seed_{seed}.xyz", seed=SEEDS)
+    params:
+        seed = lambda wc: wc.seed,
+        vaccuum = VACUUM_DEPTH,
+        n_bilayers = N_BILAYERS,
+        frozen_layers = N_LAYERS_FREEZE
+    output: 
+        final_xyz = "results/surface_relax/{seed}/surface_seed_{seed}.xyz",
+        metadata = "results/surface_relax/{seed}/metadata.json"
+    shell: 
+        "python workflow/scripts/relax_box.py {input.initial_xyz} {params.seed} {params.vaccuum} {params.n_bilayers} {params.frozen_layers} {output.final_xyz} {output.metadata}"
