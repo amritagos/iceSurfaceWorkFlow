@@ -1,0 +1,28 @@
+from itertools import product
+import numpy as np
+from pathlib import Path
+import re
+
+# Paths (if relative) should be relative to the top-level directory (in this case, 1-relax_analyze_surfaces)
+xyz_directory = '/home/amritagos/Git/Github/iceSurfaceWorkFlow/0-create_surfaces/results'
+
+filepaths = list(Path(xyz_directory).glob('*.xyz'))
+# Extract seeds from the list of file paths
+SEEDS = [int(re.search(r'surface_seed_(\d+)\.xyz$', str(path)).group(1)) for path in filepaths]
+N_SURFACES = len(SEEDS)
+
+rule all:
+    input: 
+        expand("results/bulk_relax/{seed}/system_seed_{seed}.xyz", seed=SEEDS),
+
+
+rule bulk_relax:
+    input: 
+        initial_xyz = lambda wc : xyz_directory+f"/surface_seed_{wc.seed}.xyz"
+    params:
+        seed = lambda wc: wc.seed
+    output:
+        final_xyz = "results/bulk_relax/{seed}/system_seed_{seed}.xyz",
+        metadata = "results/bulk_relax/{seed}/metadata.json"
+    shell:
+        "python workflow/scripts/relax_box.py {input.initial_xyz} {params.seed} {output.final_xyz} {output.metadata}"
