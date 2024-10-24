@@ -1,10 +1,11 @@
 from itertools import product
 import numpy as np
 
-N_SURFACES = 5
-SEEDS = np.random.randint(low=1, high=int(1e6), size=N_SURFACES)
+N_SURFACES = 20
+# SEEDS = np.random.randint(low=1, high=int(1e6), size=N_SURFACES)
+SEEDS = [i+1 for i in range(N_SURFACES)]
 DENSITY = 0.98472
-REP = [2, 2, 2]
+REP = [4, 3, 3]
 
 rule all:
     input: 
