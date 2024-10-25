@@ -20,7 +20,7 @@ rule all:
     input: 
         expand("results/bulk_relax/{seed}/system_seed_{seed}.xyz", seed=SEEDS),
         "results/bulk_systems_aggregated.csv",
-        # expand("results/surface_relax/{seed}/surface_seed_{seed}.xyz", seed=SEEDS)
+        expand("results/surface_relax/{seed}/surface_seed_{seed}.xyz", seed=SEEDS)
 
 
 rule bulk_relax:
@@ -44,7 +44,7 @@ rule aggregate_bulk:
 
 rule surface_relax:
     input: 
-        initial_xyz = expand("results/bulk_relax/{seed}/system_seed_{seed}.xyz", seed=SEEDS)
+        initial_xyz = rules.bulk_relax.output.final_xyz 
     params:
         seed = lambda wc: wc.seed,
         vaccuum = VACUUM_DEPTH,
@@ -54,4 +54,4 @@ rule surface_relax:
         final_xyz = "results/surface_relax/{seed}/surface_seed_{seed}.xyz",
         metadata = "results/surface_relax/{seed}/metadata.json"
     shell: 
-        "python workflow/scripts/relax_box.py {input.initial_xyz} {params.seed} {params.vaccuum} {params.n_bilayers} {params.frozen_layers} {output.final_xyz} {output.metadata}"
+        "python workflow/scripts/relax_surface.py {input.initial_xyz} {params.seed} {params.vaccuum} {params.n_bilayers} {params.frozen_layers} {output.final_xyz} {output.metadata}"
