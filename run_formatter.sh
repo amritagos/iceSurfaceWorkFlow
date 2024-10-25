@@ -1,2 +1,2 @@
 #!/bin/sh
-find . -regex '.*py' -exec black {} \;
+find . -type f -name "*.py" ! -name "*.npy" -exec black {} \;
