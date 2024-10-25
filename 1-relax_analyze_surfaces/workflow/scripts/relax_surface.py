@@ -9,14 +9,15 @@ sys.path.insert(1, "/home/amritagos/Git/Gitlab/scmecpp/")
 from ase_interface import SCME_PS
 
 
-def sort_oxygen_by_z(atoms):
+def sort_oxygen_by_z(o_symbol: str, atoms):
     """Get a list of sorted oxygen indices (with respect to the original atoms object)
 
     Args:
+        o_symbol(str) : Oxygen atom symbol
         atoms (Atoms): ASE Atoms object
     """
     positions = atoms.get_positions()
-    oxygen_indices = [i for i, atom in enumerate(atoms) if atom.symbol == "O"]
+    oxygen_indices = [i for i, atom in enumerate(atoms) if atom.symbol == o_symbol]
     oxygen_pos = positions[oxygen_indices]
 
     # Sort oxygen atoms based on their z coordinate
@@ -32,6 +33,7 @@ def main(
     vaccuum_depth: float,
     n_bilayers: int,
     n_frozen_bilayers: int,
+    o_symbol: str,
     output_xyz: Path,
     results_file: Path,
 ):
@@ -52,7 +54,7 @@ def main(
         n_frozen_bilayers * n_waters_bilayer
     )  # Number of water molecules to freeze
     # Frozen atoms will have tag 2 and moving atoms will have a tag of 0 (other moving atoms) or 1 (topmost top layer)
-    sorted_o_ind = sort_oxygen_by_z(surface)
+    sorted_o_ind = sort_oxygen_by_z(o_symbol, surface)
     # Top layer of the topmost bilayer
     top_indices = sorted_o_ind[-int(n_waters_bilayer / 2) :]
     # Set the tag of these atoms to 1
@@ -138,6 +140,7 @@ if __name__ == "__main__":
     parser.add_argument("vaccuum_depth", type=float)
     parser.add_argument("n_bilayers", type=int)
     parser.add_argument("n_frozen_bilayers", type=int)
+    parser.add_argument("o_symbol", type=str)
     parser.add_argument("output_xyz", type=Path)
     parser.add_argument("results_file", type=Path)
 
@@ -149,6 +152,7 @@ if __name__ == "__main__":
         args.vaccuum_depth,
         args.n_bilayers,
         args.n_frozen_bilayers,
+        args.o_symbol,
         args.output_xyz,
         args.results_file,
     )
