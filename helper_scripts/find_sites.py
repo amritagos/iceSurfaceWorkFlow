@@ -60,7 +60,7 @@ for i_ind in top_o_ind:
     h_indices = []
     for Atom in surface_system:
         if Atom.symbol == h_sym:
-            if surface_system.get_distance(i_ind, Atom.index)<o_h_bond_cutoff:
+            if surface_system.get_distance(i_ind, Atom.index, mic=True)<o_h_bond_cutoff:
                 h_indices.append(Atom.index)
         if len(h_indices)==2:
             o_h_neigh[i_ind] = h_indices
@@ -101,7 +101,7 @@ def check_site(trio, a_sites, b_sites, o_h_neigh, atoms):
     elif n_dangling_h==2:
         b_sites.append(trio)
 
-for center_ind in top_o_ind[:5]:
+for center_ind in top_o_ind:
     # Get neighbours of the center 
     neigh_center = o_o_neigh[center_ind]
     # Now loop through neighbours 
