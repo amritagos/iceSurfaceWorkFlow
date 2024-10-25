@@ -29,6 +29,7 @@ rule all:
         expand("results/surface_relax/{seed}/a_sites_seed_{seed}.npy", seed=SEEDS),
         expand("results/surface_relax/{seed}/b_sites_seed_{seed}.npy", seed=SEEDS),
         expand("results/surface_relax/{seed}/c_sites_seed_{seed}.npy", seed=SEEDS),
+        "results/surfaces_aggregated.csv"
 
 
 rule bulk_relax:
@@ -79,3 +80,13 @@ rule write_sites:
         metadata = "results/surface_relax/{seed}/site_data.json"
     shell:
         "python workflow/scripts/write_sites.py --input_xyz {input.initial_xyz} --metadata {output.metadata} --h_symbol {params.h_symbol} --o_o_cutoff {params.o_o_cutoff} --o_h_cutoff {params.o_h_cutoff} --a_site_path {output.a_sites} --b_site_path {output.b_sites} --c_site_path {output.c_sites}"
+
+rule aggregate_surface:
+    input:
+        misc_data = expand("results/surface_relax/{seed}/metadata.json", seed=SEEDS),
+        site_data = expand("results/surface_relax/{seed}/site_data.json", seed=SEEDS)
+    output:
+        out_csv = "results/surfaces_aggregated.csv",
+        out_metadata = "results/all_surfaces_metadata.json"
+    shell:
+        "python workflow/scripts/aggregate_surfaces.py --misc_metadata {input.misc_data} --site_metadata {input.site_data} --out_metadata {output.out_metadata} --out_csv {output.out_csv}"
