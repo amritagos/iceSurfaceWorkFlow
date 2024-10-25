@@ -219,7 +219,7 @@ def main(
     res["num_c_sites"] = len(c_sites)
     res["num_d_sites"] = len(d_sites)
 
-    # Now overwrite the metadata
+    # Now write out the metadata
     with open(metadata, "w") as f:
         f.write(json.dumps(res, indent=4))
 
