@@ -10,17 +10,18 @@ cluster-generic-submit-cmd:
     --output=logs/{rule}/{rule}-{wildcards}-%j.out
     --error=logs/{rule}/{rule}-{wildcards}-%j.err
     --parsable
+    --time=2-00:00:00
 cluster-generic-cancel-cmd: scancel
 default-resources:
-  - partition=short
+  - partition=any_cpu
   - qos=normal
   - mem_mb=10000
 restart-times: 2
-max-jobs-per-second: 5
+max-jobs-per-second: 50
 max-status-checks-per-second: 1
 local-cores: 1
 latency-wait: 60
-jobs: 50
+jobs: 100
 keep-going: True
 rerun-incomplete: True
 printshellcmds: True
