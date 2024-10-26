@@ -1,64 +1,81 @@
-from itertools import product
 import numpy as np
+import pandas as pd
+from pathlib import Path
 
-SEEDS = [ 500, 1024, 10000, 12345, 12599 ]
-N_SITES_A = [ len(np.load(f"res/sites/a_sites_seed_{seed}.npy")) for seed in SEEDS ]
-SITES_A = [ range(n) for n in N_SITES_A ]
+def extract_seeds_from_directory(base_dir):
+    # Convert the base directory to a Path object
+    base_path = Path(base_dir)
+    seeds = []
 
-SUFACE_ENERGIES = [-334.64616134973943, -335.4597061901166, -334.80529080297185, -333.66757194691536, -331.84587253908325]
+    # Iterate over all files and subdirectories under the base directory
+    for path in base_path.rglob('*'):
+        # Match directories with the pattern 'surface_relax/1' and extract the integer at the end
+        match = re.search(r'surface_relax/(\d+)$', str(path))
+        
+        if match:
+            seeds.append(int(match.group(1)))  # Extract and store the seed as an integer
 
-input_dict_a_sites = dict()
-for i_seed,seed in enumerate(SEEDS):
-    for site in SITES_A[i_seed]:
-        input_dict_a_sites[ f"{seed}_{site}"] = [seed, site, SUFACE_ENERGIES[i_seed]]
+    return seeds
 
-SAMPLES_A =  input_dict_a_sites.keys()
+# Path to results directory of previous workflow
+relaxed_surface_results_dir = Path("/home/amritagos/Git/Github/iceSurfaceWorkFlow/1-relax_analyze_surfaces/results")
+ISOLATED_WATER_ENERGY = 0.0
 
-# B sites 
-N_SITES_B = [ len(np.load(f"res/sites/b_sites_seed_{seed}.npy")) for seed in SEEDS ]
-SITES_B = [ range(n) for n in N_SITES_B ]
-input_dict_b_sites = dict()
-for i_seed,seed in enumerate(SEEDS):
-    for site in SITES_B[i_seed]:
-        input_dict_b_sites[ f"{seed}_{site}"] = [seed, site, SUFACE_ENERGIES[i_seed]]
+# Get the aggregated information for the surfaces 
+surface_aggregate_path = relaxed_surface_results_dir / "surfaces_aggregated.csv"
+surface_data_df = pd.read_csv(surface_aggregate_path)
 
-SAMPLES_B =  input_dict_b_sites.keys()
+SEEDS = extract_seeds_from_directory(relaxed_surface_results_dir)
+
+# Put everything you need (seed, site type, site index) etc into this dictionary
+input_dict = dict()
+
+# Loop through the seeds and update the dictionary
+site_types = ["a", "b", "c"]
+# path_to_surface_file = relaxed_surface_results_dir / f"surface_relax/{seed}/surface_seed_{seed}.xyz"
+
+for seed in SEEDS:
+    # Surface energy for each surface 
+    surface_energy = surface_data_df.loc[surface_data_df['seed'] == seed, 'surface_energy'].values[0]
+    # Loop through every site type 
+    for site_type in site_types:
+        # Get the number of sites for each site type
+        path_to_site_file = relaxed_surface_results_dir / f"surface_relax/{seed}/{site_type}_sites_seed_{seed}.npy"
+        n_sites = len(np.load(path_to_site_file))
+        site_indices = [ n for n in range(n_sites) ]
+        # Go through every site 
+        for site in site_indices:
+            input_dict[ f"{seed}_{site_type}_{site}"] = [seed, site_type, site, surface_energy]
+
+SAMPLES = list(input_dict.keys())
 
 rule all:
     input: 
-        expand("results/a_sites/{sample_a}/energy.json", sample_a=SAMPLES_A),
-        expand("results/b_sites/{sample_b}/energy.json", sample_b=SAMPLES_B),
+        expand("results/{sample}/metadata.json", sample=SAMPLES),
+        expand("results/{sample}/system.xyz", sample=SAMPLES),
         "results/aggregated.csv"
 
-rule drop_h2o_a:
+rule drop_h2o:
     input:
-        surface_file = lambda wc : f"res/surfaces/seed_{input_dict_a_sites[wc.sample_a][0]}_1.xyz",
-        site_file = lambda wc: f"res/sites/a_sites_seed_{input_dict_a_sites[wc.sample_a][0]}.npy",
+        surface_file = lambda wc : relaxed_surface_results_dir / f"surface_relax/{input_dict[wc.sample][0]}/surface_seed_{input_dict[wc.sample][0]}.xyz",
+        site_file = lambda wc: relaxed_surface_results_dir / f"surface_relax/{input_dict[wc.sample][0]}/{input_dict[wc.sample][1]}_sites_seed_{input_dict[wc.sample][0]}.npy",
     params:
-        site_idx = lambda wc: input_dict_a_sites[wc.sample_a][1],
-        surface_energy = lambda wc : input_dict_a_sites[wc.sample_a][2]
+        seed = lambda wc: input_dict[wc.sample][0],
+        site_type = lambda wc: input_dict[wc.sample][1],
+        site_idx = lambda wc: input_dict[wc.sample][2],
+        surface_energy = lambda wc : input_dict[wc.sample][3]
     output:
-        results_file = "results/a_sites/{sample_a}/energy.json"
+        metadata_file = "results/{sample}/metadata.json",
+        xyz_file = "results/{sample}/system.xyz",
     shell:
-        "python workflow/scripts/drop_h2o.py {input.surface_file} {input.site_file} {output.results_file} {params.site_idx} {params.surface_energy}"
-
-rule drop_h2o_b:
-    input:
-        surface_file = lambda wc : f"res/surfaces/seed_{input_dict_b_sites[wc.sample_b][0]}_1.xyz",
-        site_file = lambda wc: f"res/sites/b_sites_seed_{input_dict_b_sites[wc.sample_b][0]}.npy",
-    params:
-        site_idx = lambda wc: input_dict_b_sites[wc.sample_b][1],
-        surface_energy = lambda wc : input_dict_b_sites[wc.sample_b][2]
-    output:
-        results_file = "results/b_sites/{sample_b}/energy.json"
-    shell:
-        "python workflow/scripts/drop_h2o.py {input.surface_file} {input.site_file} {output.results_file} {params.site_idx} {params.surface_energy}"
+        "python workflow/scripts/drop_h2o.py --input_surface_path {input.surface_file} --site_path {input.site_file} --seed {params.seed} --site_type {params.site_type} --site_index {params.site_idx} --surface_energy {params.surface_energy} --out_metadata {output.metadata_file} --out_xyz {output.xyz_file}"
 
 rule aggregate:
     input:
-        results_a = expand("results/a_sites/{sample}/energy.json", sample=SAMPLES_A),
-        results_b = expand("results/b_sites/{sample}/energy.json", sample=SAMPLES_B)
+        result_paths = expand(rules.drop_h2o.output.metadata_file, sample=SAMPLES),
+    params:
+        water_energy = ISOLATED_WATER_ENERGY
     output:
         "results/aggregated.csv"
     shell:
-        "python workflow/scripts/aggregate.py --results_a {input.results_a} --results_b {input.results_b} --output {output}"
+        "python workflow/scripts/aggregate.py --result_paths {input.result_paths} --isolated_water_energy {params.water_energy} --output_csv {output}"
