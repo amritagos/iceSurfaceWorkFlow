@@ -6,6 +6,7 @@ from ase.io import read, write
 from ase.build import molecule
 import sys
 import json
+from ase.constraints import FixAtoms
 
 sys.path.insert(1, "/home/amritagos/Git/Gitlab/scmecpp/")
 from ase_interface import SCME_PS
@@ -112,6 +113,9 @@ def main(
     system = surface_system + single_water
     system.cell = surface_system.cell
     system.pbc = surface_system.pbc
+    # Set a constraint such that the frozen atoms are frozen (tag=2)
+    freeze = FixAtoms(mask=[atom.tag == 2 for atom in system])
+    system.set_constraint(freeze)
 
     system.calc = SCME_PS(
         system,
