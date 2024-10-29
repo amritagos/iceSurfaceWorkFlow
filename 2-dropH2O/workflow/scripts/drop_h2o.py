@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 from ase import Atoms
 import numpy as np
 from ase.io import read, write
@@ -82,6 +82,69 @@ def get_dropped_water_coordinates(
     return water_site_pos
 
 
+def check_final_site_conditions(
+    dropped_o_index: int,
+    initial_site_indices: np.ndarray,
+    system: Atoms,
+    o_o_cutoff: float = 3.5,
+) -> Tuple[bool, str]:
+    """Check whether, after the energy minimization, the water molecule has moved into another site or not
+
+    Args:
+        dropped_o_index (int): Index of the dropped water molecule
+        initial_site_indices (np.ndarray): Site indices of the site where the water molecule was supposed to be dropped
+        system (Atoms): Surface+dropped water molecule ASE Atoms object
+        o_o_cutoff (float, optional): Cutoff for neighbouring water molecules. Defaults to 3.5.
+
+    Raises:
+        Exception: _description_
+
+    Returns:
+        Tuple[bool, str]: _description_
+    """
+    final_site_indices = []
+    # find the oxygens in the top layer of the bilayer
+    # oxygens in the top layer of the surface have a tag of 1.
+    top_o_indices = [Atom.index for Atom in system if Atom.tag == 1]
+
+    # Find the site for the water molecule (the indices)
+    # The indices remain the same since the water molecule is added at the end of surface_system
+    for o_ind in top_o_indices:
+        if system.get_distance(o_ind, dropped_o_index, mic=True) <= o_o_cutoff:
+            final_site_indices.append(o_ind)
+    # Throw if the final_site_indices has more or less than three O atom indices
+    if len(final_site_indices) != 3:
+        raise Exception("The final site has more than three O atom indices in it.")
+    # Sort in ascending order
+    final_site_indices.sort()
+
+    n_dangling_h = 0
+    for o_ind in final_site_indices:
+        h_indices = [o_ind + 1, o_ind + 2]
+        for h_ind in h_indices:
+            if system[h_ind].position[2] > system[o_ind].position[2]:
+                n_dangling_h += 1
+    # A sites: 1 dangling hydrogen
+    if n_dangling_h == 1:
+        final_site_type = "a"
+    # B sites: 2 dangling hydrogens
+    elif n_dangling_h == 2:
+        final_site_type = "b"
+    # C sites: no dangling hydrogens
+    elif n_dangling_h == 0:
+        final_site_type = "c"
+    # D sites: all three are dangling hydrogens
+    elif n_dangling_h == 3:
+        final_site_type = "d"
+
+    # Check that the final site indices and the initial site indices are the same
+    site_moved = False
+    if final_site_indices != initial_site_indices.tolist():
+        site_moved = True
+
+    return site_moved, final_site_type
+
+
 def main(
     input_surface_file: Path,
     site_file: Path,
@@ -111,6 +174,9 @@ def main(
     )  # Assuming O is the center of mass
     single_water.translate(displacement)
     # Shift the water molecule to the desired position
+    dropped_o_index = len(
+        surface_system
+    )  # Index of the O in the dropped water molecule, in the system Atoms object
     system = surface_system + single_water
     system.cell = surface_system.cell
     system.pbc = surface_system.pbc
@@ -147,6 +213,11 @@ def main(
     system._calc.get_dipole_moment()  # Calculate the dipole moment
     dipole_moment_magnitude = np.linalg.norm(system._calc.results["dipole"])
 
+    # Check the final site position, and site type
+    site_moved, final_site_type = check_final_site_conditions(
+        dropped_o_index, site_type, current_site_ind, system, o_o_cutoff=3.5
+    )
+
     # Write results into metadata JSON file
     with open(metadata_file, "w") as f:
         f.write(
@@ -158,6 +229,8 @@ def main(
                     surface_energy=surface_energy,
                     system_energy=energy,
                     dipole_moment=dipole_moment_magnitude,
+                    final_site_type=final_site_type,
+                    site_moved=site_moved,
                 ),
                 indent=4,
             )

@@ -24,6 +24,8 @@ def main(
             surface_energy = res["surface_energy"]
             system_energy = res["system_energy"]
             dipole_moment = res["dipole_moment"]
+            final_site_type = (res["final_site_type"],)
+            site_moved = res["site_moved"]
             binding_energy = system_energy - surface_energy - isolated_water_energy
             results.append(
                 [
@@ -34,6 +36,8 @@ def main(
                     dipole_moment,
                     system_energy,
                     surface_energy,
+                    final_site_type,
+                    site_moved,
                 ]
             )
 
@@ -47,6 +51,8 @@ def main(
             "dipole_moment",
             "system_energy",
             "isolated_surface_energy",
+            "final_site_type",
+            "site_moved",
         ],
     )
     df.to_csv(output_csv)
