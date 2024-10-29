@@ -136,7 +136,7 @@ def main(
     from ase.optimize import BFGS
 
     dyn = BFGS(system)
-    dyn.run(fmax=0.01, steps=0)
+    dyn.run(fmax=0.01)
 
     # Write out the final XYZ file
     write(out_xyz, system)

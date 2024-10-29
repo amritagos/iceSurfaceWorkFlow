@@ -105,7 +105,7 @@ def main(
     from ase.optimize import BFGS
 
     dyn = BFGS(surface)  # Don't write out a trajectory
-    dyn.run(fmax=0.01, steps=0)
+    dyn.run(fmax=0.01)
 
     energy = surface.get_potential_energy()
 
