@@ -19,9 +19,9 @@ def main(
     # Obtain the data
     df = pd.read_csv(input_csv_path)
 
-    df_a_sites = df[df['site_type'] == 'A']
-    df_b_sites = df[df['site_type'] == 'B']
-    df_c_sites = df[df['site_type'] == 'C']
+    df_a_sites = df[df['site_type'] == 'a']
+    df_b_sites = df[df['site_type'] == 'b']
+    df_c_sites = df[df['site_type'] == 'c']
     # All relative energies in eV
     energy_a_sites = factor*df_a_sites['binding_energy'].values
     energy_b_sites = factor*df_b_sites['binding_energy'].values
