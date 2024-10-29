@@ -52,8 +52,8 @@ SAMPLES = list(input_dict.keys())
 
 rule all:
     input: 
-        expand("results/{sample}/metadata.json", sample=SAMPLES),
-        expand("results/{sample}/system.xyz", sample=SAMPLES),
+        expand("results/data/{sample}/metadata.json", sample=SAMPLES),
+        expand("results/data/{sample}/system.xyz", sample=SAMPLES),
         "results/aggregated.csv"
 
 rule drop_h2o:
@@ -67,8 +67,8 @@ rule drop_h2o:
         surface_energy = lambda wc : input_dict[wc.sample][3],
         distance_to_surface = ADSORBATE_DISTANCE_FROM_SURFACE
     output:
-        metadata_file = "results/{sample}/metadata.json",
-        xyz_file = "results/{sample}/system.xyz",
+        metadata_file = "results/data/{sample}/metadata.json",
+        xyz_file = "results/data/{sample}/system.xyz",
     shell:
         "python workflow/scripts/drop_h2o.py --input_surface_path {input.surface_file} --site_path {input.site_file} --seed {params.seed} --site_type {params.site_type} --site_index {params.site_idx} --surface_energy {params.surface_energy} --distance_to_surface {params.distance_to_surface} --out_metadata {output.metadata_file} --out_xyz {output.xyz_file}"
 
