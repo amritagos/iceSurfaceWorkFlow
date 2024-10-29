@@ -34,7 +34,7 @@ def shift_atom(
 
 
 def get_dropped_water_coordinates(
-    site_indices: List[int], surface_system: Atoms, shifting_distance=2.0
+    site_indices: List[int], surface_system: Atoms, shifting_distance
 ) -> np.ndarray:
     """Get the coordinates of the position where a water molecule should be dropped, onto a site defined by site_indices. The water molecule is placed shifting_distance Angstrom above this.
     WARNING: Assumes the box starts from 0,0,0
@@ -89,6 +89,7 @@ def main(
     site_type: str,
     site_idx: int,
     surface_energy: float,
+    distance_to_surface: float,
     metadata_file: Path,
     out_xyz: Path,
 ):
@@ -101,7 +102,7 @@ def main(
     current_site_ind = all_sites[site_idx]
     # Drop the water molecule onto the site, 2 Angstrom above the averaged z coordinate of the trio (denoting the site)
     water_site = get_dropped_water_coordinates(
-        current_site_ind, surface_system, shifting_distance=2.0
+        current_site_ind, surface_system, distance_to_surface
     )
     # Create the new water molecule
     single_water = molecule("H2O")
@@ -174,6 +175,7 @@ if __name__ == "__main__":
     parser.add_argument("--site_type", type=str)
     parser.add_argument("--site_index", type=int)
     parser.add_argument("--surface_energy", type=float)
+    parser.add_argument("--distance_to_surface", type=float)
     parser.add_argument("--out_metadata", type=Path)
     parser.add_argument("--out_xyz", type=Path)
 
@@ -186,6 +188,7 @@ if __name__ == "__main__":
         args.site_type,
         args.site_index,
         args.surface_energy,
+        args.distance_to_surface,
         args.out_metadata,
         args.out_xyz,
     )

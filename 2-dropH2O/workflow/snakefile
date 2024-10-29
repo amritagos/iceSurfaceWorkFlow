@@ -20,6 +20,7 @@ def extract_seeds_from_directory(base_dir):
 # Path to results directory of previous workflow
 relaxed_surface_results_dir = Path("/home/amritagos/Git/Github/iceSurfaceWorkFlow/1-relax_analyze_surfaces/results")
 ISOLATED_WATER_ENERGY = 0.0
+ADSORBATE_DISTANCE_FROM_SURFACE = 1.0 # in Angstrom, previously 2.0
 
 # Get the aggregated information for the surfaces 
 surface_aggregate_path = relaxed_surface_results_dir / "surfaces_aggregated.csv"
@@ -63,12 +64,13 @@ rule drop_h2o:
         seed = lambda wc: input_dict[wc.sample][0],
         site_type = lambda wc: input_dict[wc.sample][1],
         site_idx = lambda wc: input_dict[wc.sample][2],
-        surface_energy = lambda wc : input_dict[wc.sample][3]
+        surface_energy = lambda wc : input_dict[wc.sample][3],
+        distance_to_surface = ADSORBATE_DISTANCE_FROM_SURFACE
     output:
         metadata_file = "results/{sample}/metadata.json",
         xyz_file = "results/{sample}/system.xyz",
     shell:
-        "python workflow/scripts/drop_h2o.py --input_surface_path {input.surface_file} --site_path {input.site_file} --seed {params.seed} --site_type {params.site_type} --site_index {params.site_idx} --surface_energy {params.surface_energy} --out_metadata {output.metadata_file} --out_xyz {output.xyz_file}"
+        "python workflow/scripts/drop_h2o.py --input_surface_path {input.surface_file} --site_path {input.site_file} --seed {params.seed} --site_type {params.site_type} --site_index {params.site_idx} --surface_energy {params.surface_energy} --distance_to_surface {params.distance_to_surface} --out_metadata {output.metadata_file} --out_xyz {output.xyz_file}"
 
 rule aggregate:
     input:
