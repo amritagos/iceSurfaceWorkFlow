@@ -215,7 +215,7 @@ def main(
 
     # Check the final site position, and site type
     site_moved, final_site_type = check_final_site_conditions(
-        dropped_o_index, site_type, current_site_ind, system, o_o_cutoff=3.5
+        dropped_o_index, site_type, current_site_ind, system
     )
 
     # Write results into metadata JSON file
