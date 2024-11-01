@@ -29,6 +29,8 @@ rule all:
         expand("results/surface_relax/{seed}/a_sites_seed_{seed}.npy", seed=SEEDS),
         expand("results/surface_relax/{seed}/b_sites_seed_{seed}.npy", seed=SEEDS),
         expand("results/surface_relax/{seed}/c_sites_seed_{seed}.npy", seed=SEEDS),
+        expand("results/bulk_relax/{seed}/final_dipoles.npy", seed=SEEDS),
+        expand("results/surface_relax/{seed}/final_dipoles.npy", seed=SEEDS),
         "results/surfaces_aggregated.csv"
 
 
@@ -42,6 +44,18 @@ rule bulk_relax:
         metadata = "results/bulk_relax/{seed}/metadata.json"
     shell:
         "python workflow/scripts/relax_box.py {input.initial_xyz} {params.seed} {output.final_xyz} {output.metadata}"
+
+rule bulk_dipole:
+    input: 
+        initial_xyz = rules.bulk_relax.input.initial_xyz,
+        final_xyz = rules.bulk_relax.output.final_xyz
+    params:
+        add_vaccuum = 0.0
+    output:
+        initial_out_file = "results/bulk_relax/{seed}/initial_dipoles.npy",
+        final_out_file = "results/bulk_relax/{seed}/final_dipoles.npy"
+    shell: 
+        "python workflow/scripts/dipole_moments.py --initial_xyz {input.initial_xyz} --add_vaccuum_to_initial {params.add_vaccuum} --final_xyz {input.final_xyz} --initial_out {output.initial_out_file} --final_out {output.final_out_file}"
 
 rule aggregate_bulk:
     input:
@@ -80,6 +94,18 @@ rule write_sites:
         metadata = "results/surface_relax/{seed}/site_data.json"
     shell:
         "python workflow/scripts/write_sites.py --input_xyz {input.initial_xyz} --metadata {output.metadata} --h_symbol {params.h_symbol} --o_o_cutoff {params.o_o_cutoff} --o_h_cutoff {params.o_h_cutoff} --a_site_path {output.a_sites} --b_site_path {output.b_sites} --c_site_path {output.c_sites}"
+
+rule surface_dipole:
+    input: 
+        initial_xyz = rules.bulk_relax.output.final_xyz,
+        final_xyz = rules.surface_relax.output.final_xyz
+    params:
+        add_vaccuum = VACUUM_DEPTH
+    output:
+        initial_out_file = "results/surface_relax/{seed}/initial_dipoles.npy",
+        final_out_file = "results/surface_relax/{seed}/final_dipoles.npy"
+    shell: 
+        "python workflow/scripts/dipole_moments.py --initial_xyz {input.initial_xyz} --add_vaccuum_to_initial {params.add_vaccuum} --final_xyz {input.final_xyz} --initial_out {output.initial_out_file} --final_out {output.final_out_file}"
 
 rule aggregate_surface:
     input:
