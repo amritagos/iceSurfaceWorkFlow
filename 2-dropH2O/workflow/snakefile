@@ -1,60 +1,28 @@
 import numpy as np
 import pandas as pd
 from pathlib import Path
-
-def extract_seeds_from_directory(base_dir):
-    # Convert the base directory to a Path object
-    base_path = Path(base_dir)
-    seeds = []
-
-    # Iterate over all files and subdirectories under the base directory
-    for path in base_path.rglob('*'):
-        # Match directories with the pattern 'surface_relax/1' and extract the integer at the end
-        match = re.search(r'surface_relax/(\d+)$', str(path))
-        
-        if match:
-            seeds.append(int(match.group(1)))  # Extract and store the seed as an integer
-
-    return seeds
+import json
 
 # Path to results directory of previous workflow
 relaxed_surface_results_dir = Path("/home/amritagos/Git/Github/iceSurfaceWorkFlow/1-relax_analyze_surfaces/results")
 ISOLATED_WATER_ENERGY = 0.0
 ADSORBATE_DISTANCE_FROM_SURFACE = 1.0 # in Angstrom, previously 2.0
-SET_PBCS = 0 # If set to 0, disable PBC and shift admolecule to the center of the box.  
+# SET_PBCS = 0 # If set to 0, disable PBC and shift admolecule to the center of the box.  
+DISABLE_PBC = True # If true then run a single point calculatn ,bjion that turns off PBCs for the binding energy  
 
 # Get the aggregated information for the surfaces 
 surface_aggregate_path = relaxed_surface_results_dir / "surfaces_aggregated.csv"
 surface_data_df = pd.read_csv(surface_aggregate_path)
 
-SEEDS = extract_seeds_from_directory(relaxed_surface_results_dir)
-
-# Put everything you need (seed, site type, site index) etc into this dictionary
-input_dict = dict()
-
-# Loop through the seeds and update the dictionary
-site_types = ["a", "b", "c"]
-# path_to_surface_file = relaxed_surface_results_dir / f"surface_relax/{seed}/surface_seed_{seed}.xyz"
-
-for seed in SEEDS:
-    # Surface energy for each surface 
-    surface_energy = surface_data_df.loc[surface_data_df['seed'] == seed, 'surface_energy'].values[0]
-    # Loop through every site type 
-    for site_type in site_types:
-        # Get the number of sites for each site type
-        path_to_site_file = relaxed_surface_results_dir / f"surface_relax/{seed}/{site_type}_sites_seed_{seed}.npy"
-        n_sites = len(np.load(path_to_site_file))
-        site_indices = [ n for n in range(n_sites) ]
-        # Go through every site 
-        for site in site_indices:
-            input_dict[ f"{seed}_{site_type}_{site}"] = [seed, site_type, site, surface_energy]
+with open("config/input_dict.json", "r") as f:
+    input_dict = json.load(f)
 
 SAMPLES = list(input_dict.keys())
 
 rule all:
     input: 
-        expand("results/data/{sample}/metadata.json", sample=SAMPLES),
-        expand("results/data/{sample}/system.xyz", sample=SAMPLES),
+        # expand("results/data/{sample}/metadata.json", sample=SAMPLES),
+        # expand("results/data/{sample}/system.xyz", sample=SAMPLES),
         "results/aggregated.csv"
 
 rule drop_h2o:
@@ -67,16 +35,42 @@ rule drop_h2o:
         site_idx = lambda wc: input_dict[wc.sample][2],
         surface_energy = lambda wc : input_dict[wc.sample][3],
         distance_to_surface = ADSORBATE_DISTANCE_FROM_SURFACE
-        pbcs = SET_PBCS
     output:
         metadata_file = "results/data/{sample}/metadata.json",
         xyz_file = "results/data/{sample}/system.xyz",
     shell:
-        "python workflow/scripts/drop_h2o.py --input_surface_path {input.surface_file} --site_path {input.site_file} --seed {params.seed} --site_type {params.site_type} --site_index {params.site_idx} --surface_energy {params.surface_energy} --distance_to_surface {params.distance_to_surface} --set_pbcs {params.pbcs} --out_metadata {output.metadata_file} --out_xyz {output.xyz_file}"
+        "python workflow/scripts/drop_h2o.py --input_surface_path {input.surface_file} --site_path {input.site_file} --seed {params.seed} --site_type {params.site_type} --site_index {params.site_idx} --surface_energy {params.surface_energy} --distance_to_surface {params.distance_to_surface} --out_metadata {output.metadata_file} --out_xyz {output.xyz_file}"
+
+if DISABLE_PBC:
+    rule turn_pbc_off:
+        input: 
+            xyz = rules.drop_h2o.output.xyz_file,
+            metadata = rules.drop_h2o.output.metadata_file
+        output:
+            metadata_file = "results/data_no_pbc/{sample}/metadata.json",
+            xyz_file = "results/data_no_pbc/{sample}/system.xyz",
+            displacement = "results/data_no_pbc/{sample}/displacement.npy"
+        shell:
+            "python workflow/scripts/no_pbc.py --input_path {input.xyz} --input_metadata {input.metadata} --out_metadata {output.metadata_file} --out_xyz {output.xyz_file}"
+
+    rule pbc_off_surface:
+        input: 
+            xyz = lambda wc : relaxed_surface_results_dir / f"surface_relax/{input_dict[wc.sample][0]}/surface_seed_{input_dict[wc.sample][0]}.xyz",
+            displacement = rules.turn_pbc_off.output.displacement,
+            metadata = rules.turn_pbc_off.output.metadata_file
+        output:
+            metadata = "results/data_no_pbc/{sample}/final_metadata.json",
+            xyz = "results/data_no_pbc/{sample}/surface_system.xyz"
+        shell:
+            "python workflow/scripts/no_pbc_surface.py --input_surface_path {input.xyz} --displacement_path {input.displacement} --input_metadata {input.metadata} --out_metadata {output.metadata} --out_xyz {output.xyz}"
+
+aggregate_input = rules.drop_h2o.output.metadata_file
+if DISABLE_PBC:
+    aggregate_input = rules.pbc_off_surface.output.metadata
 
 rule aggregate:
     input:
-        result_paths = expand(rules.drop_h2o.output.metadata_file, sample=SAMPLES),
+        result_paths = expand(aggregate_input, sample=SAMPLES),
     params:
         water_energy = ISOLATED_WATER_ENERGY
     output:

@@ -287,7 +287,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--set_pbcs",
         type=int,
-        required=True,
+        required=False,
+        default=1,
         help="If set to 0, disable PBC and shift admolecule to the center of the box.",
     )
     parser.add_argument("--out_metadata", type=Path)

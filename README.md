@@ -1,8 +1,9 @@
 # Workflow for Ice Surface Calculations
 
-## Finding A and B sites
+## Notes for dropH2O
 
-`Python` script for identifying A and B sites, given a file format that ASE can read. 
+Now you need to create the input dictionary for the workflow in `2-dropH2O` before running the workflow.
+Copy this into the `config` directory and then run the workflow as you would normally.
 
 ## Running the Snakemake with micromamba
 
