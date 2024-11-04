@@ -82,6 +82,27 @@ def get_dropped_water_coordinates(
     return water_site_pos
 
 
+def shift_admolecule(admolecule_idx: int, atoms: Atoms) -> None:
+    """Shift all coordinates so that the admolecule is in the center of the surface
+
+    Args:
+        admolecule_idx (int): O atom index in the water molecule to shift
+        atoms (Atoms): Atoms object containing the admolecule
+    """
+    box_lengths = atoms.cell.cellpar()[:3]
+    box_center = np.array(
+        [0.5 * box_lengths[0], 0.5 * box_lengths[1], 0.5 * box_lengths[2]]
+    )
+
+    # Shift everything by moving the O atom into the center
+    displacement = box_center - atoms[admolecule_idx].position
+    displacement[2] = 0.0
+    all_positions = atoms.get_positions()
+    new_positions = all_positions + displacement
+    new_positions[:, :2] = new_positions[:, :2] % box_lengths[:2]
+    atoms.set_positions(new_positions)
+
+
 def check_final_site_conditions(
     dropped_o_index: int,
     initial_site_indices: np.ndarray,
@@ -96,13 +117,13 @@ def check_final_site_conditions(
         system (Atoms): Surface+dropped water molecule ASE Atoms object
         o_o_cutoff (float, optional): Cutoff for neighbouring water molecules. Defaults to 3.5.
 
-    Raises:
-        Exception: _description_
-
     Returns:
         Tuple[bool, str]: _description_
     """
+
     final_site_indices = []
+    final_site_distances = []
+
     # find the oxygens in the top layer of the bilayer
     # oxygens in the top layer of the surface have a tag of 1.
     top_o_indices = [Atom.index for Atom in system if Atom.tag == 1]
@@ -110,11 +131,17 @@ def check_final_site_conditions(
     # Find the site for the water molecule (the indices)
     # The indices remain the same since the water molecule is added at the end of surface_system
     for o_ind in top_o_indices:
-        if system.get_distance(o_ind, dropped_o_index, mic=True) <= o_o_cutoff:
+        d = system.get_distance(o_ind, dropped_o_index, mic=True)
+        if d <= o_o_cutoff:
+            final_site_distances.append(d)
             final_site_indices.append(o_ind)
-    # Throw if the final_site_indices has more or less than three O atom indices
-    if len(final_site_indices) != 3:
-        raise Exception("The final site has more than three O atom indices in it.")
+    # If there are more than three final sites, we just use the final sites with the smallest distance
+    if len(final_site_indices) > 3:
+        idx_sort_by_distance = np.argsort(final_site_distances)
+        final_site_indices_sorted = np.array(final_site_indices)[idx_sort_by_distance]
+        final_site_indices = list(
+            final_site_indices_sorted[:3]
+        )  # convert back to a list, because it was a list before
     # Sort in ascending order
     final_site_indices.sort()
 
@@ -153,6 +180,7 @@ def main(
     site_idx: int,
     surface_energy: float,
     distance_to_surface: float,
+    set_pbcs: bool,
     metadata_file: Path,
     out_xyz: Path,
 ):
@@ -180,6 +208,13 @@ def main(
     system = surface_system + single_water
     system.cell = surface_system.cell
     system.pbc = surface_system.pbc
+
+    # Set PBCs to false (do this only if all PBCs are false)
+    # the adatom must then be in the middle of the box away from the edges
+    if set_pbcs == False:
+        system.pbc = [False, False, False]
+        shift_admolecule(dropped_o_index, system)
+
     # Set a constraint such that the frozen atoms are frozen (tag=2)
     freeze = FixAtoms(mask=[atom.tag == 2 for atom in system])
     system.set_constraint(freeze)
@@ -203,7 +238,7 @@ def main(
     from ase.optimize import BFGS
 
     dyn = BFGS(system)
-    dyn.run(fmax=0.01)
+    dyn.run(fmax=0.01, steps=0)
 
     # Write out the final XYZ file
     write(out_xyz, system)
@@ -249,6 +284,12 @@ if __name__ == "__main__":
     parser.add_argument("--site_index", type=int)
     parser.add_argument("--surface_energy", type=float)
     parser.add_argument("--distance_to_surface", type=float)
+    parser.add_argument(
+        "--set_pbcs",
+        type=int,
+        required=True,
+        help="If set to 0, disable PBC and shift admolecule to the center of the box.",
+    )
     parser.add_argument("--out_metadata", type=Path)
     parser.add_argument("--out_xyz", type=Path)
 
@@ -262,6 +303,7 @@ if __name__ == "__main__":
         args.site_index,
         args.surface_energy,
         args.distance_to_surface,
+        bool(args.set_pbcs),
         args.out_metadata,
         args.out_xyz,
     )

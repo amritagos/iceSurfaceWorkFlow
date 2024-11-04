@@ -21,6 +21,7 @@ def extract_seeds_from_directory(base_dir):
 relaxed_surface_results_dir = Path("/home/amritagos/Git/Github/iceSurfaceWorkFlow/1-relax_analyze_surfaces/results")
 ISOLATED_WATER_ENERGY = 0.0
 ADSORBATE_DISTANCE_FROM_SURFACE = 1.0 # in Angstrom, previously 2.0
+SET_PBCS = 0 # If set to 0, disable PBC and shift admolecule to the center of the box.  
 
 # Get the aggregated information for the surfaces 
 surface_aggregate_path = relaxed_surface_results_dir / "surfaces_aggregated.csv"
@@ -66,11 +67,12 @@ rule drop_h2o:
         site_idx = lambda wc: input_dict[wc.sample][2],
         surface_energy = lambda wc : input_dict[wc.sample][3],
         distance_to_surface = ADSORBATE_DISTANCE_FROM_SURFACE
+        pbcs = SET_PBCS
     output:
         metadata_file = "results/data/{sample}/metadata.json",
         xyz_file = "results/data/{sample}/system.xyz",
     shell:
-        "python workflow/scripts/drop_h2o.py --input_surface_path {input.surface_file} --site_path {input.site_file} --seed {params.seed} --site_type {params.site_type} --site_index {params.site_idx} --surface_energy {params.surface_energy} --distance_to_surface {params.distance_to_surface} --out_metadata {output.metadata_file} --out_xyz {output.xyz_file}"
+        "python workflow/scripts/drop_h2o.py --input_surface_path {input.surface_file} --site_path {input.site_file} --seed {params.seed} --site_type {params.site_type} --site_index {params.site_idx} --surface_energy {params.surface_energy} --distance_to_surface {params.distance_to_surface} --set_pbcs {params.pbcs} --out_metadata {output.metadata_file} --out_xyz {output.xyz_file}"
 
 rule aggregate:
     input:
